@@ -15,11 +15,12 @@ import os
 import shap
 import time
 # sys.path.insert(0, '..\\NOTEBOOKS')
-from P7_functions import plot_boxplot_var_by_target
+import P7_functions
 
 def main():
     # local API (à remplacer par l'adresse de l'application déployée)
     API_URL = "http://127.0.0.1:5000/api/"
+    # API_URL = "https://oc-api-flask-mm.herokuapp.com/"
 
     ##################################
     #### LIST OF API REQUEST FUNCTIONS
@@ -178,7 +179,6 @@ def main():
     #                                        color: #ffffff} } </style> """,
     #                                        unsafe_allow_html=True, )
 
-
     #################################
     #################################
     #################################
@@ -291,8 +291,15 @@ def main():
         # place to choose main_cols
         #----------------------------
 
-        fig = plot_boxplot_var_by_target(X_tr_all, y_tr_all, X_neigh, y_neigh,
-                                         X_cust_proc, main_cols, figsize=(15,4))
+		plot_scatter_projection(X=X_tr_featsel,
+		                        ser_clust=y_train.replace({0: 'repaid', 1: 'not repaid'}),
+		                        n_display = 200,
+		                        plot_highlight = list(X_neigh.index),
+		                        X_cust = X_cust_proc,
+		                        figsize=(15, 6),
+		                        size=20,
+		                        fontsize=16,
+		                        columns=main_cols)
 
         st.write(fig) # st.pyplot(fig) # the same
         st.markdown('_Dispersion of the main features for random sample, 20 nearest neighbors and applicant customer_')
