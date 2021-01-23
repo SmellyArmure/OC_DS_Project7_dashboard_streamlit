@@ -4,3 +4,6 @@ venv
 my_venv
 .ipynb_checkpoints
 .idea
+data
+model
+Debugging.ipynb

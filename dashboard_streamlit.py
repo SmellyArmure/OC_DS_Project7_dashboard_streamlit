@@ -149,7 +149,7 @@ def main():
     image = Image.open(path)
     st.sidebar.image(image, width=180)
 
-###################################################
+    ###############################################
     # # request to fetch the local background image 
     # @st.cache(allow_output_mutation=True)
     # def get_base64_of_bin_file(bin_file):
@@ -170,7 +170,7 @@ def main():
         
     #     st.markdown(page_bg_img, unsafe_allow_html=True)
     #     return
-####################################################
+    ################################################
 
     # change color of the sidebar
     # background-color: #011839;
@@ -184,24 +184,17 @@ def main():
     #################################
     #################################
 
-    ##################################################
+    # ------------------------------------------------
     # Select the customer's ID
-    #################################################
+    # ------------------------------------------------
 
     SK_IDS = get_sk_id_list()
     select_sk_id = st.sidebar.selectbox('Select SK_ID from list:', SK_IDS, key=1)
     st.write('You selected: ', select_sk_id)
 
-    #################################################
-    # Default value for main columns
-    main_cols = ['binary__CODE_GENDER', 'high_card__OCCUPATION_TYPE',
-                 'high_card__ORGANIZATION_TYPE', 'INCOME_CREDIT_PERC',
-                 'EXT_SOURCE_2', 'ANNUITY_INCOME_PERC', 'EXT_SOURCE_3',
-                 'AMT_CREDIT', 'PAYMENT_RATE', 'DAYS_BIRTH']
-
-    # ##################################################
-    # # PERSONAL DATA
-    # ##################################################
+    # ------------------------------------------------
+    # Get All Data relative to customer 
+    # ------------------------------------------------
 
     # Get personal data (unprocessed and preprocessed)
     X_cust, X_cust_proc = get_data_cust(select_sk_id)
@@ -215,6 +208,19 @@ def main():
     X_tr_all, y_tr_all = get_all_proc_data_tr()  # X_tr_proc, y_proc
     y_tr_all = y_tr_all.replace({0: 'repaid (global)',
                                  1: 'not repaid (global)'})
+
+    # ------------------------------------------------
+    # Default value for main columns
+    # ------------------------------------------------
+
+    main_cols = ['binary__CODE_GENDER', 'high_card__OCCUPATION_TYPE',
+                 'high_card__ORGANIZATION_TYPE', 'INCOME_CREDIT_PERC',
+                 'EXT_SOURCE_2', 'ANNUITY_INCOME_PERC', 'EXT_SOURCE_3',
+                 'AMT_CREDIT', 'PAYMENT_RATE', 'DAYS_BIRTH']
+
+    # ##################################################
+    # PERSONAL DATA
+    # ##################################################
 
     if st.sidebar.checkbox("Customer's data"):
 
@@ -251,9 +257,9 @@ def main():
 
         expander.write("Here my explanation of the graphs")
 
-    ##################################################
+    # #################################################
     # BOXPLOT FOR MAIN 10 VARIABLES
-    ###################################################
+    # ##################################################
 
     if st.sidebar.checkbox('Boxplots of the main features'):
 
@@ -277,24 +283,25 @@ def main():
 
         # st.success('Done!')
 
-    ##################################################
+    # #################################################
     # SCATTERPLOT TWO OR MORE FEATURES
-    # ----------------------------
-    # place to choose main_cols .replace({0: 'repaid', 1: 'not repaid'})
-    # ----------------------------
-    ###################################################
+    # ##################################################
 
     if st.sidebar.checkbox('Scatterplot comparison'):
-
+    
         st.header('Scatterplot comparison')
-        # fig = plot_scatter_projection(X_tr_featsel,
-        #                        y_train,
-        #                        200,
-        #                        list(X_neigh.index),
-        #                        X_cust_proc)#, figsize=(15, 6), size=20, fontsize=16, columns=main_cols)
-        # st.pyplot(fig)
-        # st.write(fig)
-        # st.markdown('_Scatter plot of random sample, 20 nearest neighbors and applicant customer_')
+        st.write(X_cust_proc[['EXT_SOURCE_2', 'EXT_SOURCE_3']].head())
+        fig = plot_scatter_projection(X=X_tr_all,
+                                      ser_clust=y_tr_all.replace({0: 'repaid', 1: 'not repaid'}),
+                                      n_display=200,
+                                      plot_highlight=X_neigh,
+                                      X_cust=X_cust_proc,
+                                      figsize=(10, 5),
+                                      size=40,
+                                      fontsize=12,
+                                      columns=['EXT_SOURCE_2', 'EXT_SOURCE_3'])
+        st.write(fig)  # st.pyplot(fig)
+        st.markdown('_Scatter plot of random sample, 20 nearest neighbors and applicant customer_')
 
     ##################################################
     # SCORING
@@ -328,9 +335,9 @@ def main():
             # proportion among nearest neighbors
             st.write("proportion among nearest neighbors")
 
-    ##################################################
+    # #################################################
     # FEATURES' IMPORTANCE (SHAP VALUES) for 20 nearest neighbors
-    ###############################################
+    # ##############################################
 
     if st.sidebar.checkbox("Relative importance of features"):
 
@@ -360,9 +367,9 @@ def main():
                                                                vmin=-1, vmax=1)
                          .highlight_null('lightgrey'))
 
-    ##################################################
+    # #################################################
     # FEATURES DESCRIPTIONS
-    ##################################################
+    # #################################################
 
     features_desc = get_features_descriptions()
 

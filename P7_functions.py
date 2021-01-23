@@ -255,8 +255,7 @@ def plot_scatter_projection(X, ser_clust, n_display, plot_highlight, X_cust,
         ax.set_ylabel(columns[1], fontsize=fontsize)
 
     elif len(columns) > 2:
-        # if more than 2 columns passed
-        # Compute T-SNE projection
+        # if more than 2 columns passed, compute T-SNE projection
         tsne = TSNE(n_components=2, random_state=14)
         df_proj = pd.DataFrame(tsne.fit_transform(X_all),
                                index=X_all.index,
