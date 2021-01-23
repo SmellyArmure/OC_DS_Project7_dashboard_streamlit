@@ -1,7 +1,7 @@
-# TO RUN : $streamlit run dashboard/dashboard.py
+# TO RUN: $streamlit run dashboard/dashboard.py
 # Local URL: http://localhost:8501
 # Network URL: http://192.168.0.50:8501
-# Online URL : http://15.188.179.79
+# Online URL: http://15.188.179.79
 
 import streamlit as st
 from PIL import Image
@@ -15,15 +15,18 @@ import os
 import shap
 import time
 # sys.path.insert(0, '..\\NOTEBOOKS')
-import P7_functions
+from P7_functions import CustTransformer
+from P7_functions import plot_boxplot_var_by_target
+from P7_functions import plot_scatter_projection
+
 
 def main():
     # local API (à remplacer par l'adresse de l'application déployée)
     API_URL = "http://127.0.0.1:5000/api/"
-    # API_URL = "https://oc-api-flask-mm.herokuapp.com/"
+    # API_URL = "https://oc-api-flask-mm.herokuapp.com/api/"
 
     ##################################
-    #### LIST OF API REQUEST FUNCTIONS
+    # LIST OF API REQUEST FUNCTIONS
 
     # Get list of SK_IDS (cached)
     @st.cache
@@ -38,7 +41,7 @@ def main():
         SK_IDS = pd.Series(content['data']).values
         return SK_IDS
 
-    # Get Personal data (cached)
+    # Get Personal data (cached)
     @st.cache
     def get_data_cust(select_sk_id):
         # URL of the scoring API (ex: SK_ID_CURR = 100005)
@@ -52,7 +55,7 @@ def main():
         data_cust_proc = pd.Series(content['data_proc']).rename("SK_ID {}".format(select_sk_id))
         return data_cust, data_cust_proc
 
-    # Get data from 20 nearest neighbors in train set (cached)
+    # Get data from 20 nearest neighbors in train set (cached)
     @st.cache
     def get_data_neigh(select_sk_id):
         # URL of the scoring API (ex: SK_ID_CURR = 100005)
@@ -66,7 +69,7 @@ def main():
         y_neigh = pd.Series(content['y_neigh']['TARGET']).rename('TARGET')
         return X_neigh, y_neigh
 
-    # Get all data in train set (cached)
+    # Get all data in train set (cached)
     @st.cache
     def get_all_proc_data_tr():
         # URL of the scoring API
@@ -94,7 +97,7 @@ def main():
         thresh = content['thresh']
         return score, thresh
 
-    # Get the list of features
+    # Get the list of features
     @st.cache
     def get_features_descriptions():
         # URL of the aggregations API
@@ -107,8 +110,7 @@ def main():
         features_desc = pd.Series(content['data']['Description']).rename("Description")
         return features_desc
 
-
-    # Get the shap values of the customer and 20 nearest neighbors (cached)
+    # Get the shap values of the customer and 20 nearest neighbors (cached)
     @st.cache
     def get_shap_values(select_sk_id):
         # URL of the scoring API
@@ -123,15 +125,14 @@ def main():
         X_neigh_ = pd.DataFrame(content['X_neigh_'])
         return shap_val_df, expected_value, X_neigh_
 
-
     #################################
     #################################
     #################################
     # Configuration of the streamlit page
     st.set_page_config(page_title='Loan application scoring dashboard',
-                              page_icon='random',
-                              layout='centered',
-                              initial_sidebar_state='auto')
+                       page_icon='random',
+                       layout='centered',
+                       initial_sidebar_state='auto')
 
     # Display the title
     st.title('Loan application scoring dashboard')
@@ -184,7 +185,7 @@ def main():
     #################################
 
     ##################################################
-    # Select the customer's ID
+    # Select the customer's ID
     #################################################
 
     SK_IDS = get_sk_id_list()
@@ -199,7 +200,7 @@ def main():
                  'AMT_CREDIT', 'PAYMENT_RATE', 'DAYS_BIRTH']
 
     # ##################################################
-    # # PERSONAL DATA
+    # # PERSONAL DATA
     # ##################################################
 
     # Get personal data (unprocessed and preprocessed)
@@ -211,7 +212,7 @@ def main():
                                1: 'not repaid (neighbors)'})
 
     # Get all preprocessed training data
-    X_tr_all, y_tr_all = get_all_proc_data_tr() # X_tr_proc, y_proc
+    X_tr_all, y_tr_all = get_all_proc_data_tr()  # X_tr_proc, y_proc
     y_tr_all = y_tr_all.replace({0: 'repaid (global)',
                                  1: 'not repaid (global)'})
 
@@ -219,11 +220,9 @@ def main():
 
         st.header("Customer's data")
 
-        format_dict = {
-                    'cust prepro': '{:.2f}',
-                    '20 neigh (mean)': '{:.2f}',
-                    '20k samp (mean)': '{:.2f}'
-                    }
+        format_dict = {'cust prepro': '{:.2f}',
+                       '20 neigh (mean)': '{:.2f}',
+                       '20k samp (mean)': '{:.2f}'}
 
         if st.checkbox('Show comparison with 20 neighbors and random sample'):
             # Concatenation of the information to display
@@ -232,24 +231,23 @@ def main():
                                     X_neigh.mean().rename('20 neigh (mean)'),
                                     X_tr_all.mean().rename('20k samp (mean)')
                                     ], axis=1)
-            subset = ['cust prepro', '20 neigh (mean)', '20k samp (mean)']
+            # subset = ['cust prepro', '20 neigh (mean)', '20k samp (mean)']
         else:
-            # Display only personal_data
+            # Display only personal_data
             df_display = pd.concat([X_cust.rename('cust'),
-                        X_cust_proc.rename('cust prepro'),
-                        ], axis=1)
-            subset = ['cust prepro']
+                                    X_cust_proc.rename('cust prepro')], axis=1)
+            # subset = ['cust prepro']
 
         # Display at last 
-        st.dataframe(df_display.style.format(format_dict)\
+        st.dataframe(df_display.style.format(format_dict)
                                      .background_gradient(cmap='seismic',
                                                           axis=0, subset=None,
                                                           text_color_threshold=0.2,
-                                                          vmin=-1, vmax=1)\
+                                                          vmin=-1, vmax=1)
                                      .highlight_null('lightgrey'))
 
         expander = st.beta_expander("Concerning the graph...")
-            # format de la première colonne objet ?    
+        # format de la première colonne objet ?
 
         expander.write("Here my explanation of the graphs")
 
@@ -261,60 +259,52 @@ def main():
 
         st.header('Boxplots of the main features')
 
-        with st.spinner('Boxplot creation in progress...'):
+        # with st.spinner('Boxplot creation in progress...'):
 
-            #----------------------------
-            # place to choose main_cols
-            #----------------------------
-            fig = plot_boxplot_var_by_target(X_tr_all, y_tr_all, X_neigh, y_neigh,
-                                             X_cust_proc, main_cols, figsize=(15,4))
+        # ----------------------------
+        # place to choose main_cols
+        # ----------------------------
+        fig = plot_boxplot_var_by_target(X_tr_all, y_tr_all, X_neigh, y_neigh,
+                                         X_cust_proc, main_cols, figsize=(15, 4))
 
-            st.write(fig) # st.pyplot(fig) # the same
-            st.markdown('_Dispersion of the main features for random sample, 20 nearest neighbors and applicant customer_')
+        st.write(fig)  # st.pyplot(fig) # the same
+        st.markdown('_Dispersion of the main features for random sample,\
+            20 nearest neighbors and applicant customer_')
 
-            expander = st.beta_expander("Concerning the graph...")
-                # format de la première colonne objet ?    
+        expander = st.beta_expander("Concerning the graph...")
 
-            expander.write("Here my explanation of the graphs")
+        expander.write("Here my explanation of the graphs")
 
         # st.success('Done!')
 
     ##################################################
     # SCATTERPLOT TWO OR MORE FEATURES
+    # ----------------------------
+    # place to choose main_cols .replace({0: 'repaid', 1: 'not repaid'})
+    # ----------------------------
     ###################################################
 
-    if st.sidebar.checkbox('Scatterplot comparison of the customer'):
+    if st.sidebar.checkbox('Scatterplot comparison'):
 
-        st.header('Scatterplot comparison of the customer')
-
-        #----------------------------
-        # place to choose main_cols
-        #----------------------------
-
-		plot_scatter_projection(X=X_tr_featsel,
-		                        ser_clust=y_train.replace({0: 'repaid', 1: 'not repaid'}),
-		                        n_display = 200,
-		                        plot_highlight = list(X_neigh.index),
-		                        X_cust = X_cust_proc,
-		                        figsize=(15, 6),
-		                        size=20,
-		                        fontsize=16,
-		                        columns=main_cols)
-
-        st.write(fig) # st.pyplot(fig) # the same
-        st.markdown('_Dispersion of the main features for random sample, 20 nearest neighbors and applicant customer_')
-
+        st.header('Scatterplot comparison')
+        # fig = plot_scatter_projection(X_tr_featsel,
+        #                        y_train,
+        #                        200,
+        #                        list(X_neigh.index),
+        #                        X_cust_proc)#, figsize=(15, 6), size=20, fontsize=16, columns=main_cols)
+        # st.pyplot(fig)
+        # st.write(fig)
+        # st.markdown('_Scatter plot of random sample, 20 nearest neighbors and applicant customer_')
 
     ##################################################
     # SCORING
     ##################################################
-    
 
     if st.sidebar.checkbox("Scoring and model's decision"):
 
         st.header("Scoring and model's decision")
 
-        # Get score
+        #  Get score
         score, thresh = get_cust_scoring(select_sk_id)
 
         # Display score (default probability)
@@ -325,7 +315,7 @@ def main():
         # Compute decision according to the best threshold (True: loan refused)
         bool_cust = (score >= thresh)
 
-        if bool_cust is False :
+        if bool_cust is False:
             decision = "Loan granted" 
             # st.balloons()
             # st.warning("The loan has been accepted but be careful...")
@@ -333,12 +323,10 @@ def main():
             decision = "LOAN REJECTED"
         
         st.write('Decision:', decision)
-        
 
         if st.checkbox('Show explanations'):
             # proportion among nearest neighbors
             st.write("proportion among nearest neighbors")
-
 
     ##################################################
     # FEATURES' IMPORTANCE (SHAP VALUES) for 20 nearest neighbors
@@ -353,27 +341,29 @@ def main():
 
         # nb_features = 
 
-        # draw the graph
+        # draw the graph
         shap.plots._waterfall.waterfall_legacy(expected_value,
                                                shap_val_df.values[-1],
                                                X_neigh_.values.reshape(-1),
-                                               feature_names=X_neigh_.columns,
+                                               feature_names=list(X_neigh_.columns),
                                                max_display=10, show=False)
-        plt.gcf().set_size_inches((14,3))
+        plt.gcf().set_size_inches((14, 3))
         # plt.show()
 
-        # Plot the graph on the dashboard
+        # Plot the graph on the dashboard
         st.pyplot(plt.gcf())
 
-        if st.checkbox('Show details'):
-            st.dataframe(shap_values)
-
+        if st.checkbox('Show details'):  # .style.format(format_dict)\
+            st.dataframe(shap_val_df.style.background_gradient(cmap='seismic',
+                                                               axis=0, subset=None,
+                                                               text_color_threshold=0.2,
+                                                               vmin=-1, vmax=1)
+                         .highlight_null('lightgrey'))
 
     ##################################################
     # FEATURES DESCRIPTIONS
     ##################################################
 
-    
     features_desc = get_features_descriptions()
 
     if st.sidebar.checkbox('Features descriptions'):
@@ -393,5 +383,6 @@ def main():
     
     ################################################
 
-if __name__== '__main__':
+
+if __name__ == '__main__':
     main()
