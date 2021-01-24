@@ -166,7 +166,7 @@ class CustTransformer(BaseEstimator):
 """
 For each of the variables in 'main_cols', plot a boxplot of the whole data (X_all),
 then a swarmplot of the 20 nearest neighbors' variable values (X_neigh),
-and the values of the applicant customer (X_cust)
+and the values of the applicant customer (X_cust) as a pd.Series.
 """
 
 import seaborn as sns
@@ -176,7 +176,7 @@ def plot_boxplot_var_by_target(X_all, y_all, X_neigh, y_neigh, X_cust, main_cols
 
     df_all = pd.concat([X_all[main_cols], y_all.to_frame(name='TARGET')], axis=1)
     df_neigh = pd.concat([X_neigh[main_cols], y_neigh.to_frame(name='TARGET')], axis=1)
-    df_cust = X_cust[main_cols].to_frame('values').reset_index()
+    df_cust = X_cust[main_cols].to_frame('values').reset_index()  # pd.Series to pd.DataFrame
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -238,12 +238,13 @@ from sklearn.manifold import TSNE
 
 def plot_scatter_projection(X, ser_clust, n_display, plot_highlight, X_cust,
                             figsize=(10, 6), size=10, fontsize=12, columns=None):
+
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
 
-    X_all = pd.concat([X, X_cust], axis=0)
+    X_all = pd.concat([X, X_cust.to_frame().T], axis=0)
     ind_neigh = list(plot_highlight.index)
-    customer_idx = X_cust.index[0]
+    customer_idx = X_cust.name
 
     columns = X_all.columns if columns is None else columns
 
@@ -295,8 +296,8 @@ def plot_scatter_projection(X, ser_clust, n_display, plot_highlight, X_cust,
                    label=f"Nearest neighbors ({name_clust})")
 
     # plot the applicant customer
-    ax.scatter(df_data.loc[customer_idx:customer_idx].iloc[:, 0],
-               df_data.loc[customer_idx:customer_idx].iloc[:, 1],
+    ax.scatter(df_data.loc[customer_idx].iloc[0],
+               df_data.loc[customer_idx].iloc[1],
                s=size * 10, alpha=0.7, c='yellow', ec='k', zorder=10,
                label="Applicant customer")
 

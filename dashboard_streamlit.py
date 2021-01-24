@@ -22,8 +22,8 @@ from P7_functions import plot_scatter_projection
 
 def main():
     # local API (à remplacer par l'adresse de l'application déployée)
-    API_URL = "http://127.0.0.1:5000/api/"
-    # API_URL = "https://oc-api-flask-mm.herokuapp.com/api/"
+    # API_URL = "http://127.0.0.1:5000/api/"
+    API_URL = "https://oc-api-flask-mm.herokuapp.com/api/"
 
     ##################################
     # LIST OF API REQUEST FUNCTIONS
@@ -51,8 +51,8 @@ def main():
         # convert from JSON format to Python dict
         content = json.loads(response.content.decode('utf-8'))
         # convert data to pd.Series
-        data_cust = pd.Series(content['data']).rename("SK_ID {}".format(select_sk_id))
-        data_cust_proc = pd.Series(content['data_proc']).rename("SK_ID {}".format(select_sk_id))
+        data_cust = pd.Series(content['data']).rename(select_sk_id)
+        data_cust_proc = pd.Series(content['data_proc']).rename(select_sk_id)
         return data_cust, data_cust_proc
 
     # Get data from 20 nearest neighbors in train set (cached)
@@ -197,7 +197,7 @@ def main():
     # ------------------------------------------------
 
     # Get personal data (unprocessed and preprocessed)
-    X_cust, X_cust_proc = get_data_cust(select_sk_id)
+    X_cust, X_cust_proc = get_data_cust(select_sk_id)  # pd.Series !!!!
 
     # Get 20 neighbors personal data (preprocessed)
     X_neigh, y_neigh = get_data_neigh(select_sk_id)
@@ -236,12 +236,12 @@ def main():
                                     X_cust_proc.rename('cust prepro'),
                                     X_neigh.mean().rename('20 neigh (mean)'),
                                     X_tr_all.mean().rename('20k samp (mean)')
-                                    ], axis=1)
+                                    ], axis=1)  # all pd.Series
             # subset = ['cust prepro', '20 neigh (mean)', '20k samp (mean)']
         else:
             # Display only personal_data
             df_display = pd.concat([X_cust.rename('cust'),
-                                    X_cust_proc.rename('cust prepro')], axis=1)
+                                    X_cust_proc.rename('cust prepro')], axis=1)  # all pd.Series
             # subset = ['cust prepro']
 
         # Display at last 
@@ -265,23 +265,22 @@ def main():
 
         st.header('Boxplots of the main features')
 
-        # with st.spinner('Boxplot creation in progress...'):
+        with st.spinner('Boxplot creation in progress...'):
+            # ----------------------------
+            # place to choose main_cols
+            # ----------------------------
+            fig = plot_boxplot_var_by_target(X_tr_all, y_tr_all, X_neigh, y_neigh,
+                                            X_cust_proc, main_cols, figsize=(15, 4))
 
-        # ----------------------------
-        # place to choose main_cols
-        # ----------------------------
-        fig = plot_boxplot_var_by_target(X_tr_all, y_tr_all, X_neigh, y_neigh,
-                                         X_cust_proc, main_cols, figsize=(15, 4))
+            st.write(fig)  # st.pyplot(fig) # the same
+            st.markdown('_Dispersion of the main features for random sample,\
+                20 nearest neighbors and applicant customer_')
 
-        st.write(fig)  # st.pyplot(fig) # the same
-        st.markdown('_Dispersion of the main features for random sample,\
-            20 nearest neighbors and applicant customer_')
+            expander = st.beta_expander("Concerning the graph...")
 
-        expander = st.beta_expander("Concerning the graph...")
+            expander.write("Here my explanation of the graphs")
 
-        expander.write("Here my explanation of the graphs")
-
-        # st.success('Done!')
+            # st.success('Done!')
 
     # #################################################
     # SCATTERPLOT TWO OR MORE FEATURES
@@ -290,18 +289,24 @@ def main():
     if st.sidebar.checkbox('Scatterplot comparison'):
     
         st.header('Scatterplot comparison')
-        st.write(X_cust_proc[['EXT_SOURCE_2', 'EXT_SOURCE_3']].head())
-        fig = plot_scatter_projection(X=X_tr_all,
-                                      ser_clust=y_tr_all.replace({0: 'repaid', 1: 'not repaid'}),
-                                      n_display=200,
-                                      plot_highlight=X_neigh,
-                                      X_cust=X_cust_proc,
-                                      figsize=(10, 5),
-                                      size=40,
-                                      fontsize=12,
-                                      columns=['EXT_SOURCE_2', 'EXT_SOURCE_3'])
-        st.write(fig)  # st.pyplot(fig)
-        st.markdown('_Scatter plot of random sample, 20 nearest neighbors and applicant customer_')
+
+        feat_ax1 = st.selectbox('Axis 1:', list(X_tr_all.columns), key=1)
+        feat_ax2 = st.selectbox('Axis 2:', list(X_tr_all.columns), key=1)
+
+        with st.spinner('Scatterplot creation in progress...'):
+            fig = plot_scatter_projection(X=X_tr_all,
+                                        ser_clust=y_tr_all.replace({0: 'repaid',
+                                                                    1: 'not repaid'}),
+                                        n_display=200,
+                                        plot_highlight=X_neigh,
+                                        X_cust=X_cust_proc,  # pd.Series
+                                        figsize=(10, 5),
+                                        size=40,
+                                        fontsize=12,
+                                        columns=[feat_ax1, feat_ax2])
+            
+            st.write(fig)  # st.pyplot(fig)
+            st.markdown('_Scatter plot of random sample, 20 nearest neighbors and applicant customer_')
 
     ##################################################
     # SCORING
@@ -325,15 +330,30 @@ def main():
         if bool_cust is False:
             decision = "Loan granted" 
             # st.balloons()
-            # st.warning("The loan has been accepted but be careful...")
+            # st.warning("The loan has been accepted but...")
         else:
             decision = "LOAN REJECTED"
         
         st.write('Decision:', decision)
 
         if st.checkbox('Show explanations'):
-            # proportion among nearest neighbors
-            st.write("proportion among nearest neighbors")
+            
+            # get shap's values for customer and 20 nearest neighbors
+            shap_val_df, expected_value, X_neigh_ = get_shap_values(select_sk_id)
+            # draw the graph
+            shap.plots._waterfall.waterfall_legacy(expected_value,
+                                                shap_val_df.values[-1],
+                                                feature_names=list(X_neigh_.columns),
+                                                max_display=10, show=False)
+            plt.gcf().set_size_inches((14, 5))
+            # Plot the graph on the dashboard
+            st.pyplot(plt.gcf())
+
+            if st.checkbox('Show details of the shap values'):  # .style.format(format_dict)\
+                st.dataframe(shap_val_df.style.format("{:.2}")
+                .background_gradient(cmap='seismic', axis=0, subset=None,
+                                     text_color_threshold=0.2, vmin=-1, vmax=1)
+                .highlight_null('lightgrey'))
 
     # #################################################
     # FEATURES' IMPORTANCE (SHAP VALUES) for 20 nearest neighbors
@@ -341,13 +361,12 @@ def main():
 
     if st.sidebar.checkbox("Relative importance of features"):
 
-        st.header("Relative importance of features")
+        st.header("For the 20 nearest neighbors")
+
+        st.header("For the customer")
 
         # get shap's values for customer and 20 nearest neighbors
         shap_val_df, expected_value, X_neigh_ = get_shap_values(select_sk_id)
-
-        # nb_features = 
-
         # draw the graph
         shap.plots._waterfall.waterfall_legacy(expected_value,
                                                shap_val_df.values[-1],
@@ -355,8 +374,6 @@ def main():
                                                feature_names=list(X_neigh_.columns),
                                                max_display=10, show=False)
         plt.gcf().set_size_inches((14, 3))
-        # plt.show()
-
         # Plot the graph on the dashboard
         st.pyplot(plt.gcf())
 
