@@ -22,8 +22,8 @@ from dashboard_functions import plot_scatter_projection
 
 def main():
     # local API (à remplacer par l'adresse de l'application déployée)
-    API_URL = "http://127.0.0.1:5000/api/"
-    # API_URL = "https://oc-api-flask-mm.herokuapp.com/api/"
+    # API_URL = "http://127.0.0.1:5000/api/"
+    API_URL = "https://oc-api-flask-mm.herokuapp.com/api/"
 
     ##################################
     # LIST OF API REQUEST FUNCTIONS
@@ -134,7 +134,7 @@ def main():
         content = json.loads(response.content.decode('utf-8'))
         # convert data to pd.DataFrame or pd.Series
         shap_val_df = pd.DataFrame(content['shap_val'])
-        shap_val_trans = pd.Series(content['shap_val_trans'])
+        shap_val_trans = pd.Series(content['shap_val_cust_trans'])
         exp_value = content['exp_val']
         exp_value_trans = content['exp_val_trans']
         X_neigh_ = pd.DataFrame(content['X_neigh_'])
@@ -206,6 +206,9 @@ def main():
     SK_IDS = get_sk_id_list()
     select_sk_id = st.sidebar.selectbox('Select SK_ID from list:', SK_IDS, key=18)
     st.write('You selected: ', select_sk_id)
+    # get shap's values for customer and 20 nearest neighbors
+    shap_val, shap_val_trans, exp_val, exp_val_trans, X_neigh_ = \
+        get_shap_values(select_sk_id)
 
     # ------------------------------------------------
     # Get All Data relative to customer 
@@ -227,8 +230,8 @@ def main():
     # ------------------------------------------------
     # Default value for main columns
     # ------------------------------------------------
-
-    main_cols = list(get_features_importances().sort_values(ascending=False)\
+    feat_imp = get_features_importances()
+    main_cols = list(feat_imp.sort_values(ascending=False)\
                                                .iloc[:12].index)
     # st.write(main_cols)
 
@@ -239,7 +242,7 @@ def main():
 
     # #############################
     
-    def get_list_display_features(select_sk_id, def_n, key):
+    def get_list_display_features(shap_val_trans, def_n, key):
     
         all_feat = X_tr_all.columns.to_list()
         
@@ -248,12 +251,11 @@ def main():
                       value=def_n, step=None, format=None, key=key)
         
         if st.checkbox('Choose main features according to SHAP local interpretation for the applicant customer', key=key):
-            _, shap_val_t, *_ =  get_shap_values(select_sk_id)
-            disp_cols = list(shap_val_t.abs()
+            disp_cols = list(shap_val_trans.abs()
                                 .sort_values(ascending=False)
                                 .iloc[:n].index)
         else:
-            disp_cols = list(get_features_importances().sort_values(ascending=False)\
+            disp_cols = list(feat_imp.sort_values(ascending=False)\
                                             .iloc[:n].index)
             
         disp_box_cols = st.multiselect('Choose the features to display (default: order of general importance for lgbm calssifier):',
@@ -281,15 +283,6 @@ def main():
         # Display default threshold
         st.write('Default model threshold: {:.0f}%'.format(thresh*100))
         
-        expander = st.beta_expander("Concerning the classification model...")
-
-        expander.write("The prediction was made using a LGBM (Light Gradient Boosting Model) \
-classification model.")
-
-        expander.write("The default model threshold is tuned to maximize a gain function that penalizes \
-'false negative'/type II errors (i.e. granted loans that would not actually not be repaid) \
-10 times more than 'false positive'/type I errors (i.e. rejected loans that would actually be repaid).")
-
         # Compute decision according to the best threshold (True: loan refused)
         bool_cust = (score >= thresh)
 
@@ -301,6 +294,16 @@ classification model.")
             decision = "LOAN REJECTED"
         
         st.write('Decision:', decision)
+        
+        expander = st.beta_expander("Concerning the classification model...")
+
+        expander.write("The prediction was made using a LGBM (Light Gradient Boosting Model) \
+classification model.")
+
+        expander.write("The default model threshold is tuned to maximize a gain function that penalizes \
+'false negative'/type II errors (i.e. granted loans that would not actually not be repaid) \
+10 times more than 'false positive'/type I errors (i.e. rejected loans that would actually be repaid).")
+
 
         if st.checkbox('Show local interpretation', key=37):
 
@@ -309,9 +312,9 @@ classification model.")
                 nb_features = st.slider("Nb of features to display",
                                         min_value=2, max_value=42,
                                         value=10, step=None, format=None, key=14)
-                # get shap's values for customer and 20 nearest neighbors
-                shap_val, shap_val_trans, exp_val, exp_val_trans, X_neigh_ = \
-                    get_shap_values(select_sk_id)
+                # # get shap's values for customer and 20 nearest neighbors
+                # shap_val, shap_val_trans, exp_val, exp_val_trans, X_neigh_ = \
+                #     get_shap_values(select_sk_id)
                 
                 # draw the graph (only for the customer with scaling)
                 shap.plots._waterfall.waterfall_legacy(exp_val_trans,
@@ -395,7 +398,7 @@ the values on the arrows is the predicted probability of default on the loan (no
 
         expander.write("The above table shows the value of each feature:\
   \n- _cust_: values of the feature for the applicant customer,\
-unprocessed  /n- _cust prepro_: values of the feature for the \
+unprocessed  \n- _cust prepro_: values of the feature for the \
  applicant customer after categorical encoding and standard scaling\
   \n- _20 neigh (mean)_: mean of the preprocessed values of each feature \
   for the 20 nearest neighbors of the applicant customer in the training \
@@ -414,7 +417,7 @@ for a random sample of customers from the training set.")
 
         with st.spinner('Boxplot creation in progress...'):
             
-            disp_box_cols = get_list_display_features(select_sk_id, 10, key=43)
+            disp_box_cols = get_list_display_features(shap_val_trans, 10, key=43)
             
             fig = plot_boxplot_var_by_target(X_tr_all, y_tr_all, X_neigh, y_neigh,
                                              X_cust_proc, disp_box_cols, figsize=(10, 4))
@@ -443,7 +446,7 @@ their loan, and red boxplots are for the customers that didn't repay it.Over the
         
         plt.clf()
         
-        disp_box_cols = get_list_display_features(select_sk_id, 2, key=41)
+        disp_box_cols = get_list_display_features(shap_val_trans, 2, key=41)
         if len(disp_box_cols)>2:
             proj = st.radio("Choose projection method", ['PCA', 't-SNE'])
         else:
@@ -492,15 +495,15 @@ Values for the applicant customer are superimposed in yellow.")
         if st.checkbox('Add local feature importance for the applicant cutomer', key=26):
             plot_choice.append(2)
         
-        # get shap's values for customer and 20 nearest neighbors
-        shap_val_df, _, _, _, X_neigh_ = get_shap_values(select_sk_id)
+        # # get shap's values for customer and 20 nearest neighbors
+        # shap_val_df, _, _, _, X_neigh_ = get_shap_values(select_sk_id)
             
-        disp_box_cols = get_list_display_features(select_sk_id, 10, key=42)
+        disp_box_cols = get_list_display_features(shap_val_trans, 10, key=42)
         fig2, ax2 = plt.subplots(1, 1, figsize=(12, 3))
     
-        global_imp = get_features_importances().loc[disp_box_cols]
-        mean_shap_neigh = shap_val_df.mean().loc[disp_box_cols]
-        shap_val_cust = shap_val_df.iloc[-1].loc[disp_box_cols]
+        global_imp = feat_imp.loc[disp_box_cols]
+        mean_shap_neigh = shap_val.mean().loc[disp_box_cols]
+        shap_val_cust = shap_val.iloc[-1].loc[disp_box_cols]
         
         from sklearn.preprocessing import MinMaxScaler
         minmax = MinMaxScaler()
@@ -543,7 +546,7 @@ scaling (0 stands for min and 1 for max value).")
                         value=10, step=None, format=None, key=13)
             
             # draw the graph
-            shap.summary_plot(shap_val_df.values,  # shap_values[1], # shap values
+            shap.summary_plot(shap_val.values,  # shap values
                               X_neigh_.values,  # data (np.array)
                               feature_names=list(X_neigh_.columns),  # features name of data (order matters)
                               max_display=nb_features,  # nb of displayed features

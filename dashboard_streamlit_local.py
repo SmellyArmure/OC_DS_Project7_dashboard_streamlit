@@ -22,8 +22,8 @@ from dashboard_functions import plot_scatter_projection
 
 def main():
     # local API (à remplacer par l'adresse de l'application déployée)
-    # API_URL = "http://127.0.0.1:5000/api/"
-    API_URL = "https://oc-api-flask-mm.herokuapp.com/api/"
+    API_URL = "http://127.0.0.1:5000/api/"
+    # API_URL = "https://oc-api-flask-mm.herokuapp.com/api/"
 
     ##################################
     # LIST OF API REQUEST FUNCTIONS
@@ -134,7 +134,7 @@ def main():
         content = json.loads(response.content.decode('utf-8'))
         # convert data to pd.DataFrame or pd.Series
         shap_val_df = pd.DataFrame(content['shap_val'])
-        shap_val_trans = pd.Series(content['shap_val_trans'])
+        shap_val_trans = pd.Series(content['shap_val_cust_trans'])
         exp_value = content['exp_val']
         exp_value_trans = content['exp_val_trans']
         X_neigh_ = pd.DataFrame(content['X_neigh_'])
@@ -398,7 +398,7 @@ the values on the arrows is the predicted probability of default on the loan (no
 
         expander.write("The above table shows the value of each feature:\
   \n- _cust_: values of the feature for the applicant customer,\
-unprocessed  /n- _cust prepro_: values of the feature for the \
+unprocessed  \n- _cust prepro_: values of the feature for the \
  applicant customer after categorical encoding and standard scaling\
   \n- _20 neigh (mean)_: mean of the preprocessed values of each feature \
   for the 20 nearest neighbors of the applicant customer in the training \
