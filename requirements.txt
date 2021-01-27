@@ -11,6 +11,6 @@ streamlit==0.73.1
 optuna==2.3.0
 matplotlib==3.3.2
 requests==2.25.1
-ipython==7.19.0
+ipython
 Pillow==8.1.0
 scikit_learn==0.24.1

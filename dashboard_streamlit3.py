@@ -398,7 +398,7 @@ the values on the arrows is the predicted probability of default on the loan (no
 
         expander.write("The above table shows the value of each feature:\
   \n- _cust_: values of the feature for the applicant customer,\
-unprocessed  /n- _cust prepro_: values of the feature for the \
+unprocessed  \n- _cust prepro_: values of the feature for the \
  applicant customer after categorical encoding and standard scaling\
   \n- _20 neigh (mean)_: mean of the preprocessed values of each feature \
   for the 20 nearest neighbors of the applicant customer in the training \
