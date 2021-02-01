@@ -255,7 +255,7 @@ def main():
                                 .sort_values(ascending=False)
                                 .iloc[:n].index)
         else:
-            disp_cols = list(feat_imp.sort_values(ascending=False)\
+            disp_cols = list(get_features_importances().sort_values(ascending=False)\
                                             .iloc[:n].index)
             
         disp_box_cols = st.multiselect('Choose the features to display (default: order of general importance for lgbm calssifier):',
@@ -501,7 +501,7 @@ Values for the applicant customer are superimposed in yellow.")
         disp_box_cols = get_list_display_features(shap_val_trans, 10, key=42)
         fig2, ax2 = plt.subplots(1, 1, figsize=(12, 3))
     
-        global_imp = feat_imp.loc[disp_box_cols]
+        global_imp = get_features_importances().loc[disp_box_cols]
         mean_shap_neigh = shap_val.mean().loc[disp_box_cols]
         shap_val_cust = shap_val.iloc[-1].loc[disp_box_cols]
         
